@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Technical Deep Dive - Delta Consulting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --deep-blue: #0A0E27;
+            --navy: #1A1F3A;
+            --electric-cyan: #00D4FF;
+            --pink-accent: #FF6B9D;
+            --emerald: #10B981;
+            --orange: #F59E0B;
+            --purple: #7C3AED;
+            --muted-blue: #2A3050;
+            --light-text: #E8E9F3;
+            --muted-text: #A0A5C1;
+            --border-color: #3A4068;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--deep-blue);
+            color: var(--light-text);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .presentation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-in-out;
+            background: linear-gradient(135deg, var(--deep-blue) 0%, var(--navy) 100%);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: var(--electric-cyan);
+            color: var(--deep-blue);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover {
+            background: var(--pink-accent);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            color: var(--muted-text);
+            font-size: 14px;
+            margin: 0 15px;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--muted-blue);
+            z-index: 1001;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--electric-cyan), var(--pink-accent));
+            transition: width 0.5s ease;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 700;
+            margin-bottom: 30px;
+            line-height: 1.1;
+        }
+
+        h2 {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 600;
+            color: var(--electric-cyan);
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            margin-bottom: 15px;
+            color: var(--electric-cyan);
+        }
+
+        p {
+            font-size: clamp(1rem, 1.5vw, 1.25rem);
+            line-height: 1.7;
+            color: var(--muted-text);
+        }
+
+        ul {
+            margin-left: 20px;
+            line-height: 2;
+            color: var(--muted-text);
+            font-size: clamp(1rem, 1.5vw, 1.15rem);
+        }
+
+        code {
+            background: var(--navy);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--electric-cyan);
+            font-size: 0.9em;
+        }
+
+        .title-slide {
+            text-align: center;
+            max-width: 900px;
+        }
+
+        .gradient-accent {
+            height: 4px;
+            width: 150px;
+            background: linear-gradient(90deg, var(--electric-cyan), var(--pink-accent));
+            margin: 30px auto;
+        }
+
+        .card {
+            background: var(--navy);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 4px solid var(--electric-cyan);
+            transition: transform 0.3s;
+            margin: 20px 0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .tech-card {
+            background: var(--navy);
+            padding: 25px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 2px solid var(--border-color);
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--electric-cyan);
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            color: #d4d4d4;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            align-items: start;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .diagram-box {
+            background: var(--navy);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid var(--electric-cyan);
+            text-align: center;
+            margin: 10px;
+        }
+
+        .arrow {
+            color: var(--pink-accent);
+            font-size: 2rem;
+            margin: 10px 0;
+        }
+
+        .highlight {
+            color: var(--electric-cyan);
+            font-weight: bold;
+        }
+
+        .formula {
+            background: var(--navy);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: var(--electric-cyan);
+            font-size: 1.1rem;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide.active .animate-item {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .slide.active .animate-item:nth-child(1) { animation-delay: 0.1s; }
+        .slide.active .animate-item:nth-child(2) { animation-delay: 0.2s; }
+        .slide.active .animate-item:nth-child(3) { animation-delay: 0.3s; }
+        .slide.active .animate-item:nth-child(4) { animation-delay: 0.4s; }
+        .slide.active .animate-item:nth-child(5) { animation-delay: 0.5s; }
+        .slide.active .animate-item:nth-child(6) { animation-delay: 0.6s; }
+
+        .help-text {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            font-size: 12px;
+            color: var(--muted-text);
+            z-index: 1000;
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--muted-blue);
+            color: var(--light-text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            background: var(--electric-cyan);
+            color: var(--deep-blue);
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+            }
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .nav-controls {
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressBar"></div>
+    </div>
+
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="title-slide">
+                <h1 class="animate-item" style="color: var(--electric-cyan);">AI Technical Deep Dive</h1>
+                <div class="gradient-accent animate-item"></div>
+                <p class="animate-item" style="font-size: 1.5rem; margin-top: 40px;">Transformers, Neural Networks & How AI Actually Works</p>
+                <p class="animate-item" style="margin-top: 20px;">Delta Consulting</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: Overview -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 900px;">
+                <h2>What We'll Cover</h2>
+                <div class="card animate-item">
+                    <h3>1. Neural Networks Basics</h3>
+                    <p>How a single neuron works and how networks learn</p>
+                </div>
+                <div class="card animate-item">
+                    <h3>2. Deep Learning</h3>
+                    <p>Why stacking layers creates intelligence</p>
+                </div>
+                <div class="card animate-item">
+                    <h3>3. Recurrent Neural Networks (RNNs)</h3>
+                    <p>The predecessor to transformers for sequence data</p>
+                </div>
+                <div class="card animate-item">
+                    <h3>4. The Transformer Architecture</h3>
+                    <p>The breakthrough that made modern AI possible</p>
+                </div>
+                <div class="card animate-item">
+                    <h3>5. Attention Mechanism</h3>
+                    <p>The key innovation that changed everything</p>
+                </div>
+                <div class="card animate-item">
+                    <h3>6. How GPT Works</h3>
+                    <p>Putting it all together: training and inference</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Neural Networks Intro -->
+        <div class="slide" style="background: linear-gradient(135deg, var(--electric-cyan) 0%, var(--pink-accent) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">Neural Networks: The Foundation</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    Inspired by how the brain works
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 4: What is a Neuron -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>What is a Neuron?</h2>
+                <div class="two-column">
+                    <div>
+                        <div class="tech-card animate-item">
+                            <h3 style="color: var(--pink-accent);">Biological Neuron</h3>
+                            <p style="margin-top: 15px;">
+                                In your brain, neurons receive signals from other neurons. If the signal is strong enough, the neuron "fires" and sends a signal to connected neurons.
+                            </p>
+                        </div>
+                        <div class="tech-card animate-item" style="margin-top: 20px;">
+                            <h3 style="color: var(--electric-cyan);">Artificial Neuron</h3>
+                            <p style="margin-top: 15px;">
+                                A mathematical function that takes inputs, multiplies them by weights, adds them up, and applies an activation function.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="formula animate-item">
+                            <p>y = f(w₁x₁ + w₂x₂ + ... + wₙxₙ + b)</p>
+                        </div>
+                        <div class="tech-card animate-item" style="margin-top: 20px;">
+                            <p><strong>Where:</strong></p>
+                            <ul style="margin-top: 10px;">
+                                <li><code>x₁, x₂, ... xₙ</code> = inputs</li>
+                                <li><code>w₁, w₂, ... wₙ</code> = weights (learned)</li>
+                                <li><code>b</code> = bias (learned)</li>
+                                <li><code>f</code> = activation function</li>
+                                <li><code>y</code> = output</li>
+                            </ul>
+                        </div>
+                        <p style="margin-top: 20px; color: var(--muted-text);" class="animate-item">
+                            The weights are what the network learns during training!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Simple Neural Network -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>A Simple Neural Network</h2>
+                <div class="tech-card animate-item">
+                    <h3>Structure: Input → Hidden → Output</h3>
+                    <div style="display: flex; justify-content: space-around; align-items: center; margin: 30px 0; flex-wrap: wrap;">
+                        <div class="diagram-box">
+                            <p><strong>Input Layer</strong></p>
+                            <p style="margin-top: 10px;">x₁, x₂, x₃</p>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="diagram-box">
+                            <p><strong>Hidden Layer</strong></p>
+                            <p style="margin-top: 10px;">h₁, h₂, h₃</p>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="diagram-box">
+                            <p><strong>Output Layer</strong></p>
+                            <p style="margin-top: 10px;">y</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>Forward Pass</h3>
+                        <p style="margin-top: 10px;">
+                            Data flows from input → hidden → output. Each connection has a weight that multiplies the value.
+                        </p>
+                        <p style="margin-top: 15px;">
+                            Each neuron in the hidden layer receives all inputs, computes a weighted sum, applies activation, and passes to output.
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Learning (Backpropagation)</h3>
+                        <p style="margin-top: 10px;">
+                            When the output is wrong, the network adjusts weights by calculating how much each weight contributed to the error.
+                        </p>
+                        <p style="margin-top: 15px;">
+                            This happens in reverse (backpropagation): errors flow backwards, and weights are updated using gradient descent.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Activation Functions -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Activation Functions</h2>
+                <p style="margin-bottom: 25px; text-align: center;">
+                    Activation functions decide whether a neuron should "fire" or not. They add non-linearity, which is crucial for learning complex patterns.
+                </p>
+                <div class="three-column">
+                    <div class="tech-card animate-item">
+                        <h3 style="color: var(--pink-accent);">ReLU</h3>
+                        <div class="formula">f(x) = max(0, x)</div>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">
+                            Most common. Simple and efficient. Returns 0 for negative inputs, x for positive.
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3 style="color: var(--electric-cyan);">Sigmoid</h3>
+                        <div class="formula">f(x) = 1/(1 + e⁻ˣ)</div>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">
+                            Outputs between 0 and 1. Good for probabilities. Used in older networks.
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3 style="color: var(--emerald);">Tanh</h3>
+                        <div class="formula">f(x) = tanh(x)</div>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">
+                            Outputs between -1 and 1. Zero-centered, which helps training.
+                        </p>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Why Non-Linearity Matters</h3>
+                    <p>
+                        Without activation functions, no matter how many layers you stack, it's still just a linear transformation. 
+                        Non-linearity allows the network to learn complex, non-linear patterns in data.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Deep Learning -->
+        <div class="slide" style="background: linear-gradient(135deg, var(--pink-accent) 0%, var(--electric-cyan) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">Deep Learning</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    Why More Layers = More Intelligence
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 8: Why Depth Matters -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Why Stack More Layers?</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Feature Hierarchy</h3>
+                    <p style="margin-top: 15px;">
+                        Each layer learns increasingly complex features:
+                    </p>
+                    <ul style="margin-top: 15px;">
+                        <li><strong>Layer 1:</strong> Edges, lines, curves</li>
+                        <li><strong>Layer 2:</strong> Shapes, textures</li>
+                        <li><strong>Layer 3:</strong> Object parts (eyes, wheels)</li>
+                        <li><strong>Layer 4:</strong> Complete objects (faces, cars)</li>
+                        <li><strong>Layer 5+:</strong> Complex patterns and relationships</li>
+                    </ul>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>Shallow Network</h3>
+                        <p style="margin-top: 10px;">
+                            Can learn simple patterns but struggles with complex relationships. Limited representation power.
+                        </p>
+                        <p style="margin-top: 15px; color: var(--muted-text);">
+                            Example: 2-3 layers
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Deep Network</h3>
+                        <p style="margin-top: 10px;">
+                            Can learn hierarchical representations. Each layer builds on the previous, enabling complex reasoning.
+                        </p>
+                        <p style="margin-top: 15px; color: var(--muted-text);">
+                            Example: 100+ layers (like GPT-3)
+                        </p>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>Key Insight:</strong> Deep networks can approximate any function with enough layers and neurons. This is called the Universal Approximation Theorem.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: RNNs Intro -->
+        <div class="slide" style="background: linear-gradient(135deg, #10B981 0%, var(--electric-cyan) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">Recurrent Neural Networks</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    Handling Sequences Before Transformers
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 10: RNNs Explained -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>How RNNs Work</h2>
+                <div class="tech-card animate-item">
+                    <h3>The Problem with Regular Neural Networks</h3>
+                    <p style="margin-top: 15px;">
+                        Regular networks process one input at a time with no memory. But language is sequential - the meaning of a word depends on previous words.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <h3 style="color: var(--electric-cyan);">RNN Solution: Hidden State</h3>
+                    <p style="margin-top: 15px;">
+                        RNNs maintain a "hidden state" that acts as memory. At each step, they process the current input AND the previous hidden state.
+                    </p>
+                    <div class="formula" style="margin-top: 20px;">
+                        hₜ = tanh(W·xₜ + U·hₜ₋₁ + b)
+                    </div>
+                    <p style="margin-top: 15px; color: var(--muted-text);">
+                        Where hₜ is the hidden state at time t, containing information from all previous inputs.
+                    </p>
+                </div>
+                <div style="display: flex; justify-content: space-around; align-items: center; margin: 30px 0; flex-wrap: wrap;">
+                    <div class="diagram-box animate-item">
+                        <p><strong>Input</strong></p>
+                        <p>x₁</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box animate-item">
+                        <p><strong>RNN</strong></p>
+                        <p>h₁</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box animate-item">
+                        <p><strong>Output</strong></p>
+                        <p>y₁</p>
+                    </div>
+                    <div style="width: 100%; text-align: center; margin-top: 20px;">
+                        <p style="color: var(--pink-accent);">↓ (hidden state flows to next step)</p>
+                    </div>
+                    <div class="diagram-box animate-item">
+                        <p><strong>Input</strong></p>
+                        <p>x₂</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box animate-item">
+                        <p><strong>RNN</strong></p>
+                        <p>h₂ (uses h₁)</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box animate-item">
+                        <p><strong>Output</strong></p>
+                        <p>y₂</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: RNN Problems -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Problems with RNNs</h2>
+                <div class="two-column">
+                    <div class="tech-card animate-item">
+                        <h3 style="color: var(--pink-accent);">Vanishing Gradient Problem</h3>
+                        <p style="margin-top: 15px;">
+                            When training deep RNNs, gradients (error signals) shrink exponentially as they propagate backwards through time.
+                        </p>
+                        <p style="margin-top: 15px;">
+                            Early words in a sentence get almost no learning signal. The network "forgets" what happened earlier.
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3 style="color: var(--pink-accent);">Sequential Processing</h3>
+                        <p style="margin-top: 15px;">
+                            RNNs process words one at a time, in order. This is slow and cannot be parallelized.
+                        </p>
+                        <p style="margin-top: 15px;">
+                            Modern GPUs are designed for parallel processing, but RNNs can't take advantage of this.
+                        </p>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3 style="color: var(--electric-cyan);">LSTM & GRU: Partial Solutions</h3>
+                    <p style="margin-top: 15px;">
+                        Long Short-Term Memory (LSTM) and Gated Recurrent Units (GRU) were created to solve the vanishing gradient problem.
+                        They use "gates" to selectively remember or forget information.
+                    </p>
+                    <p style="margin-top: 15px;">
+                        But they're still sequential and slow. This is why transformers were revolutionary.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Transformer Intro -->
+        <div class="slide" style="background: linear-gradient(135deg, var(--purple) 0%, var(--pink-accent) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">The Transformer</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    The Architecture That Changed Everything
+                </p>
+                <p style="color: rgba(255,255,255,0.8); font-size: 1.1rem; margin-top: 20px;">
+                    Introduced in "Attention Is All You Need" (2017)
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 13: What is a Transformer -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>What is a Transformer?</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Key Innovation: Self-Attention</h3>
+                    <p style="margin-top: 15px;">
+                        Unlike RNNs, transformers process all words in a sentence simultaneously. They use "attention" to figure out which words are important for understanding each other word.
+                    </p>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>RNN Approach</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Process words one by one</li>
+                            <li>Hidden state carries information forward</li>
+                            <li>Slow, sequential</li>
+                            <li>Hard to parallelize</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Transformer Approach</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Process all words at once</li>
+                            <li>Attention connects all words</li>
+                            <li>Fast, parallel</li>
+                            <li>Perfect for GPUs</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>Result:</strong> Transformers can train on much larger datasets in less time, leading to models like GPT that have been trained on almost the entire internet.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Transformer Architecture -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1100px;">
+                <h2>Transformer Architecture Overview</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--pink-accent);">High-Level Structure</h3>
+                    <div style="margin: 30px 0;">
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 400px;">
+                            <p><strong>Input Embeddings</strong></p>
+                            <p style="font-size: 0.9rem;">Convert words to numbers</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 400px;">
+                            <p><strong>Positional Encoding</strong></p>
+                            <p style="font-size: 0.9rem;">Add position information</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 400px;">
+                            <p><strong>Encoder Stack</strong></p>
+                            <p style="font-size: 0.9rem;">(N layers, typically 6-12)</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 400px;">
+                            <p><strong>Decoder Stack</strong></p>
+                            <p style="font-size: 0.9rem;">(N layers, for generation)</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 400px;">
+                            <p><strong>Output</strong></p>
+                            <p style="font-size: 0.9rem;">Probability distribution over words</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>Note:</strong> GPT models are "decoder-only" transformers. They don't have a separate encoder - the decoder handles both understanding and generation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Attention Mechanism -->
+        <div class="slide" style="background: linear-gradient(135deg, var(--electric-cyan) 0%, var(--pink-accent) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">Attention Mechanism</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    The Heart of the Transformer
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 16: How Attention Works -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>How Attention Works</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Simple Analogy</h3>
+                    <p style="margin-top: 15px;">
+                        Imagine you're reading a sentence: "The cat sat on the mat."
+                    </p>
+                    <p style="margin-top: 15px;">
+                        When you see the word "it" later, your brain automatically connects it to "cat" because you know "it" refers to the cat. Attention does the same thing.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>The Three Components: Query, Key, Value</h3>
+                    <div class="two-column" style="margin-top: 20px;">
+                        <div>
+                            <p><strong>Query (Q):</strong> "What am I looking for?"</p>
+                            <p style="margin-top: 10px;"><strong>Key (K):</strong> "What information do I have?"</p>
+                            <p style="margin-top: 10px;"><strong>Value (V):</strong> "What is the actual content?"</p>
+                        </div>
+                        <div>
+                            <p style="color: var(--muted-text); font-size: 0.9rem;">
+                                For each word, the transformer creates a Query, Key, and Value vector. It then computes how much each word should "attend to" every other word.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="formula animate-item" style="margin-top: 30px;">
+                    Attention(Q, K, V) = softmax(QKᵀ / √dₖ) V
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <p><strong>What this does:</strong></p>
+                    <ul style="margin-top: 10px;">
+                        <li>Computes similarity between Query and Key for all word pairs</li>
+                        <li>Divides by √dₖ to prevent extreme values (scaling)</li>
+                        <li>Applies softmax to get attention weights (probabilities)</li>
+                        <li>Multiplies by Value to get the weighted sum</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Multi-Head Attention -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Multi-Head Attention</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--pink-accent);">Why Multiple Heads?</h3>
+                    <p style="margin-top: 15px;">
+                        Instead of one attention mechanism, transformers use multiple "heads" (typically 8-128), each learning different types of relationships.
+                    </p>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>Head 1 might learn:</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Subject-verb relationships</li>
+                            <li>"The cat" → "sat"</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Head 2 might learn:</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Pronoun references</li>
+                            <li>"it" → "cat"</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Head 3 might learn:</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Long-range dependencies</li>
+                            <li>Connections across sentences</li>
+                        </ul>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Head 4 might learn:</h3>
+                        <ul style="margin-top: 15px;">
+                            <li>Syntactic structure</li>
+                            <li>Grammar patterns</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>Result:</strong> Each head specializes in different aspects of language, giving the model a richer understanding.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Transformer Block -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Transformer Block (One Layer)</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Structure of Each Layer</h3>
+                    <div style="margin: 30px 0;">
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px;">
+                            <p><strong>Input</strong></p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px; border-color: var(--pink-accent);">
+                            <p><strong>Multi-Head Attention</strong></p>
+                            <p style="font-size: 0.9rem;">Words attend to each other</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px;">
+                            <p><strong>Add & Norm</strong></p>
+                            <p style="font-size: 0.9rem;">Residual connection + layer normalization</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px; border-color: var(--emerald);">
+                            <p><strong>Feed-Forward Network</strong></p>
+                            <p style="font-size: 0.9rem;">Two linear layers with ReLU</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px;">
+                            <p><strong>Add & Norm</strong></p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box" style="margin: 15px auto; max-width: 500px;">
+                            <p><strong>Output</strong></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>Residual Connections</h3>
+                        <p style="margin-top: 10px;">
+                            Input is added to the output of each sub-layer. This helps gradients flow during training and allows deeper networks.
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Layer Normalization</h3>
+                        <p style="margin-top: 10px;">
+                            Normalizes the activations to have mean 0 and variance 1. This stabilizes training and speeds up convergence.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Positional Encoding -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Positional Encoding</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--pink-accent);">The Problem</h3>
+                    <p style="margin-top: 15px;">
+                        Attention processes all words simultaneously, so the model has no inherent sense of word order. But word order matters in language!
+                    </p>
+                    <p style="margin-top: 15px;">
+                        "The cat chased the dog" ≠ "The dog chased the cat"
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3 style="color: var(--electric-cyan);">The Solution</h3>
+                    <p style="margin-top: 15px;">
+                        Add positional encodings to the input embeddings. These are fixed (not learned) sine and cosine functions that encode position information.
+                    </p>
+                    <div class="formula" style="margin-top: 20px;">
+                        PE(pos, 2i) = sin(pos / 10000²ⁱ/ᵈ)
+                    </div>
+                    <div class="formula">
+                        PE(pos, 2i+1) = cos(pos / 10000²ⁱ/ᵈ)
+                    </div>
+                    <p style="margin-top: 15px; color: var(--muted-text);">
+                        Where pos is the position and i is the dimension. This creates a unique pattern for each position that the model can learn to use.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>Note:</strong> Some modern models (like GPT) use learned positional embeddings instead of fixed ones, which can work better.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: How GPT Works -->
+        <div class="slide" style="background: linear-gradient(135deg, #10B981 0%, var(--electric-cyan) 100%);">
+            <div class="title-slide">
+                <h1 style="color: white;">How GPT Works</h1>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1.4rem; margin-top: 30px;">
+                    Putting It All Together
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 21: GPT Architecture -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>GPT Architecture (Decoder-Only)</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Key Differences from Original Transformer</h3>
+                    <ul style="margin-top: 15px;">
+                        <li><strong>No Encoder:</strong> GPT only uses the decoder stack</li>
+                        <li><strong>Masked Self-Attention:</strong> Words can only attend to previous words (causal masking)</li>
+                        <li><strong>Autoregressive:</strong> Generates one token at a time, using previous tokens</li>
+                    </ul>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Why Causal Masking?</h3>
+                    <p style="margin-top: 15px;">
+                        During training, GPT predicts the next word. If a word could see future words, it would be cheating! Causal masking ensures each word only sees previous words.
+                    </p>
+                    <div class="code-block" style="margin-top: 20px;">
+                        <code>
+                            Sentence: "The cat sat on the"<br>
+                            When predicting "mat":<br>
+                            ✅ Can see: "The", "cat", "sat", "on", "the"<br>
+                            ❌ Cannot see: "mat" (that's what we're predicting!)
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 22: Tokenization -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Tokenization: Converting Text to Numbers</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--pink-accent);">The Challenge</h3>
+                    <p style="margin-top: 15px;">
+                        Neural networks work with numbers, not words. We need to convert text into numbers (tokens) that the model can process.
+                    </p>
+                </div>
+                <div class="two-column" style="margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>Word-Level Tokenization</h3>
+                        <p style="margin-top: 10px; color: var(--muted-text); font-size: 0.9rem;">
+                            Each word = one token<br>
+                            "Hello world" → [Hello, world]
+                        </p>
+                        <p style="margin-top: 15px;">
+                            <strong>Problem:</strong> Huge vocabulary, many rare words
+                        </p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>Subword Tokenization (BPE)</h3>
+                        <p style="margin-top: 10px; color: var(--muted-text); font-size: 0.9rem;">
+                            Words split into subwords<br>
+                            "unhappiness" → ["un", "happi", "ness"]
+                        </p>
+                        <p style="margin-top: 15px;">
+                            <strong>Advantage:</strong> Handles unknown words, smaller vocabulary
+                        </p>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Example: GPT Tokenization</h3>
+                    <div class="code-block">
+                        <code>
+                            Input: "Hello, how are you?"<br><br>
+                            Tokens: [15496, 11, 527, 499, 30, 0]<br>
+                            (Each number represents a token in the vocabulary)<br><br>
+                            Vocabulary size: ~50,000 tokens (GPT-3)<br>
+                            Includes: words, subwords, punctuation, special tokens
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 23: Training Process -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Training GPT: The Process</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Step 1: Data Collection</h3>
+                    <p style="margin-top: 15px;">
+                        Collect massive amounts of text from the internet, books, articles, code, etc. GPT-3 was trained on ~570GB of text data.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <h3 style="color: var(--electric-cyan);">Step 2: Preprocessing</h3>
+                    <p style="margin-top: 15px;">
+                        Clean the data, tokenize it, and create training examples. Each example is a sequence of tokens.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <h3 style="color: var(--electric-cyan);">Step 3: Self-Supervised Learning</h3>
+                    <p style="margin-top: 15px;">
+                        For each sequence, the model tries to predict the next token. The loss is computed by comparing predicted probabilities to the actual next token.
+                    </p>
+                    <div class="formula" style="margin-top: 15px;">
+                        Loss = -log(P(token_actual | context))
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <h3 style="color: var(--electric-cyan);">Step 4: Backpropagation</h3>
+                    <p style="margin-top: 15px;">
+                        Compute gradients and update all weights using Adam optimizer. This happens millions of times over weeks/months.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 20px;">
+                    <h3 style="color: var(--electric-cyan);">Step 5: Scaling</h3>
+                    <p style="margin-top: 15px;">
+                        Larger models (more parameters) + more data + more compute = better performance. This is the scaling law.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 24: Inference (Generation) -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Inference: How GPT Generates Text</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--pink-accent);">Autoregressive Generation</h3>
+                    <p style="margin-top: 15px;">
+                        GPT generates text one token at a time, using previously generated tokens as context.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Step-by-Step Process</h3>
+                    <div style="margin-top: 20px;">
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>1. User Input:</strong> "The weather is"</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>2. Tokenize:</strong> Convert to token IDs</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>3. Forward Pass:</strong> Through all transformer layers</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>4. Output:</strong> Probability distribution over all tokens</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>5. Sample:</strong> Pick next token (using temperature, top-p)</p>
+                        </div>
+                        <div style="text-align: center; margin: 10px 0;">
+                            <span class="arrow">↓</span>
+                        </div>
+                        <div class="diagram-box animate-item" style="margin: 10px 0;">
+                            <p><strong>6. Repeat:</strong> Add token to context, generate next</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Sampling Strategies</h3>
+                    <ul style="margin-top: 15px;">
+                        <li><strong>Greedy:</strong> Always pick the highest probability token (deterministic)</li>
+                        <li><strong>Temperature:</strong> Adjust randomness. Lower = more focused, Higher = more creative</li>
+                        <li><strong>Top-p (nucleus):</strong> Sample from tokens whose cumulative probability is less than p</li>
+                        <li><strong>Top-k:</strong> Sample from the k most likely tokens</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 25: Model Sizes -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Model Scale: Why Size Matters</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Parameters = Learned Weights</h3>
+                    <p style="margin-top: 15px;">
+                        Each connection in the neural network has a weight. The total number of these weights is called "parameters."
+                    </p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px;">
+                    <div class="tech-card animate-item">
+                        <h3>GPT-1 (2018)</h3>
+                        <p style="font-size: 2rem; color: var(--electric-cyan); margin: 15px 0;">117M</p>
+                        <p>parameters</p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>GPT-2 (2019)</h3>
+                        <p style="font-size: 2rem; color: var(--electric-cyan); margin: 15px 0;">1.5B</p>
+                        <p>parameters</p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>GPT-3 (2020)</h3>
+                        <p style="font-size: 2rem; color: var(--pink-accent); margin: 15px 0;">175B</p>
+                        <p>parameters</p>
+                    </div>
+                    <div class="tech-card animate-item">
+                        <h3>GPT-4 (2023)</h3>
+                        <p style="font-size: 2rem; color: var(--pink-accent); margin: 15px 0;">~1.7T?</p>
+                        <p>parameters (estimated)</p>
+                    </div>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3>Scaling Laws</h3>
+                    <p style="margin-top: 15px;">
+                        Research shows that model performance scales predictably with:
+                    </p>
+                    <ul style="margin-top: 15px;">
+                        <li>Number of parameters</li>
+                        <li>Amount of training data</li>
+                        <li>Compute used for training</li>
+                    </ul>
+                    <p style="margin-top: 15px;">
+                        This is why companies keep building bigger models - bigger usually means better (up to a point).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 26: Fine-tuning & RLHF -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2>Making GPT Helpful: Fine-tuning & RLHF</h2>
+                <div class="tech-card animate-item">
+                    <h3 style="color: var(--electric-cyan);">Problem with Base GPT</h3>
+                    <p style="margin-top: 15px;">
+                        Base GPT just predicts the next token. It doesn't follow instructions, can be harmful, and doesn't know when to stop.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3 style="color: var(--pink-accent);">Solution 1: Supervised Fine-tuning (SFT)</h3>
+                    <p style="margin-top: 15px;">
+                        Train on examples of desired behavior:
+                    </p>
+                    <div class="code-block" style="margin-top: 15px;">
+                        <code>
+                            Input: "Translate to French: Hello"<br>
+                            Output: "Bonjour"<br><br>
+                            Input: "Explain quantum physics simply"<br>
+                            Output: "Quantum physics studies..."
+                        </code>
+                    </div>
+                    <p style="margin-top: 15px;">
+                        The model learns to follow instructions from these examples.
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <h3 style="color: var(--pink-accent);">Solution 2: Reinforcement Learning from Human Feedback (RLHF)</h3>
+                    <p style="margin-top: 15px;">
+                        <strong>Step 1:</strong> Train a reward model that scores responses based on human preferences<br>
+                        <strong>Step 2:</strong> Use reinforcement learning to optimize the model to get higher reward scores<br>
+                        <strong>Result:</strong> Model learns to generate responses humans prefer (helpful, harmless, honest)
+                    </p>
+                </div>
+                <div class="tech-card animate-item" style="margin-top: 30px;">
+                    <p><strong>This is why ChatGPT is so much better than raw GPT-3!</strong> It's been fine-tuned and optimized using RLHF to be helpful and follow instructions.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 27: Key Takeaways -->
+        <div class="slide">
+            <div style="width: 100%; max-width: 1000px;">
+                <h2 style="text-align: center; margin-bottom: 40px;">Key Technical Takeaways</h2>
+                <div class="card animate-item" style="position: relative; padding-left: 70px;">
+                    <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--electric-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--deep-blue); font-size: 1.5rem;">1</div>
+                    <h3>Attention is the breakthrough</h3>
+                    <p>Self-attention allows parallel processing and long-range dependencies, solving RNN limitations.</p>
+                </div>
+                <div class="card animate-item" style="position: relative; padding-left: 70px;">
+                    <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--electric-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--deep-blue); font-size: 1.5rem;">2</div>
+                    <h3>Transformers scale better</h3>
+                    <p>Parallel processing + GPU optimization enables training on massive datasets, leading to emergent capabilities.</p>
+                </div>
+                <div class="card animate-item" style="position: relative; padding-left: 70px;">
+                    <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--electric-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--deep-blue); font-size: 1.5rem;">3</div>
+                    <h3>Scale drives capability</h3>
+                    <p>More parameters + more data + more compute = better performance. This is why models keep getting bigger.</p>
+                </div>
+                <div class="card animate-item" style="position: relative; padding-left: 70px;">
+                    <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--electric-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--deep-blue); font-size: 1.5rem;">4</div>
+                    <h3>Training != Deployment</h3>
+                    <p>Base models are just next-token predictors. Fine-tuning and RLHF make them helpful, safe, and instruction-following.</p>
+                </div>
+                <div class="card animate-item" style="position: relative; padding-left: 70px;">
+                    <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: var(--electric-cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--deep-blue); font-size: 1.5rem;">5</div>
+                    <h3>It's all math</h3>
+                    <p>At its core, AI is matrix multiplications, attention calculations, and gradient descent. No magic, just very advanced math.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 28: Q&A -->
+        <div class="slide" style="background: linear-gradient(135deg, var(--deep-blue) 0%, var(--navy) 100%);">
+            <div class="title-slide">
+                <h1 class="animate-item">Questions?</h1>
+                <div class="gradient-accent animate-item"></div>
+                <div class="card animate-item" style="max-width: 700px; margin: 40px auto; text-align: left;">
+                    <h3 style="margin-bottom: 25px; text-align: center;">Deep Dive Topics:</h3>
+                    <p style="margin: 15px 0; font-size: 1.1rem;">• How does backpropagation actually work?</p>
+                    <p style="margin: 15px 0; font-size: 1.1rem;">• What are the computational complexities?</p>
+                    <p style="margin: 15px 0; font-size: 1.1rem;">• How do different optimizers work?</p>
+                    <p style="margin: 15px 0; font-size: 1.1rem;">• What are the latest architecture improvements?</p>
+                    <p style="margin: 15px 0; font-size: 1.1rem;">• How do you actually implement a transformer?</p>
+                </div>
+                <p class="animate-item" style="color: var(--muted-text); margin-top: 40px; font-size: 1.2rem;">Delta Consulting</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+        <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">28</span></span>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+
+    <div class="help-text">
+        Use arrow keys or spacebar to navigate
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides.forEach(slide => {
+                slide.classList.remove('active', 'prev');
+            });
+
+            if (n >= totalSlides) currentSlide = 0;
+            if (n < 0) currentSlide = totalSlides - 1;
+
+            for (let i = 0; i < currentSlide; i++) {
+                slides[i].classList.add('prev');
+            }
+
+            slides[currentSlide].classList.add('active');
+
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            showSlide(currentSlide);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            }
+            if (e.key === 'Home') {
+                currentSlide = 0;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'End') {
+                currentSlide = totalSlides - 1;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) changeSlide(1);
+            if (touchEndX > touchStartX + 50) changeSlide(-1);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        showSlide(0);
+
+        window.addEventListener('load', () => {
+            slides[0].querySelectorAll('.animate-item').forEach((item, index) => {
+                item.style.opacity = '0';
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

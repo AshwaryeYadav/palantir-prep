@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers: Building from Ground Up</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --deep-blue: #0A0E27;
+            --navy: #1A1F3A;
+            --electric-cyan: #00D4FF;
+            --pink-accent: #FF6B9D;
+            --emerald: #10B981;
+            --orange: #F59E0B;
+            --purple: #7C3AED;
+            --muted-blue: #2A3050;
+            --light-text: #E8E9F3;
+            --muted-text: #A0A5C1;
+            --border-color: #3A4068;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--deep-blue);
+            color: var(--light-text);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .presentation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-in-out;
+            background: linear-gradient(135deg, var(--deep-blue) 0%, var(--navy) 100%);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: var(--electric-cyan);
+            color: var(--deep-blue);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover {
+            background: var(--pink-accent);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            color: var(--muted-text);
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--muted-blue);
+            z-index: 1000;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--electric-cyan), var(--pink-accent));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--electric-cyan), var(--pink-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 25px;
+            color: var(--electric-cyan);
+        }
+
+        h3 {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            margin-bottom: 20px;
+            color: var(--emerald);
+        }
+
+        .title-slide {
+            text-align: center;
+            width: 100%;
+        }
+
+        .content-box {
+            background: var(--navy);
+            padding: 40px;
+            border-radius: 15px;
+            border-left: 5px solid var(--electric-cyan);
+            margin: 20px 0;
+            max-width: 900px;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            align-items: center;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .feature-card {
+            background: var(--navy);
+            padding: 30px;
+            border-radius: 12px;
+            border-top: 3px solid var(--electric-cyan);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .list-item {
+            background: var(--navy);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 3px solid var(--electric-cyan);
+        }
+
+        .big-text {
+            font-size: clamp(1.2rem, 2vw, 1.5rem);
+            line-height: 1.8;
+            color: var(--light-text);
+        }
+
+        .highlight {
+            color: var(--electric-cyan);
+            font-weight: bold;
+        }
+
+        .emoji-large {
+            font-size: 4rem;
+            margin: 20px 0;
+        }
+
+        .code-snippet {
+            background: var(--muted-blue);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--emerald);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .architecture-diagram {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .component-box {
+            background: var(--navy);
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            text-align: center;
+        }
+
+        .arrow {
+            color: var(--electric-cyan);
+            font-size: 2rem;
+            align-self: center;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide.active .animate-item {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .slide.active .animate-item:nth-child(1) { animation-delay: 0.1s; }
+        .slide.active .animate-item:nth-child(2) { animation-delay: 0.2s; }
+        .slide.active .animate-item:nth-child(3) { animation-delay: 0.3s; }
+        .slide.active .animate-item:nth-child(4) { animation-delay: 0.4s; }
+        .slide.active .animate-item:nth-child(5) { animation-delay: 0.5s; }
+        .slide.active .animate-item:nth-child(6) { animation-delay: 0.6s; }
+
+        .help-text {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            font-size: 12px;
+            color: var(--muted-text);
+            z-index: 1000;
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--muted-blue);
+            color: var(--light-text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            background: var(--electric-cyan);
+            color: var(--deep-blue);
+        }
+
+        .comparison-table {
+            width: 100%;
+            max-width: 1000px;
+            margin: 20px 0;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            background: var(--navy);
+            border-radius: 8px;
+        }
+
+        .table-header {
+            background: var(--muted-blue);
+            font-weight: bold;
+            color: var(--electric-cyan);
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+            }
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+            }
+            .architecture-diagram {
+                grid-template-columns: 1fr;
+            }
+            .arrow {
+                transform: rotate(90deg);
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .nav-controls {
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressBar"></div>
+    </div>
+
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="title-slide">
+                <h1 class="animate-item">Transformers</h1>
+                <p class="animate-item" style="font-size: 1.5rem; color: var(--muted-text); margin: 20px 0;">
+                    Building from Ground Up
+                </p>
+                <p class="animate-item big-text" style="margin-top: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
+                    A high-level guide to understanding and implementing transformer architectures
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: What are Transformers? -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">What are Transformers?</h2>
+                <div class="content-box animate-item">
+                    <p class="big-text" style="margin-bottom: 20px;">
+                        Transformers are a type of neural network architecture that revolutionized 
+                        <span class="highlight">natural language processing</span> and beyond.
+                    </p>
+                    <p class="big-text">
+                        Unlike previous models that processed sequences step-by-step, transformers can 
+                        <span class="highlight">process all positions in parallel</span>, making them 
+                        faster and more scalable.
+                    </p>
+                </div>
+                <div class="three-column animate-item" style="margin-top: 40px;">
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <h3>Fast</h3>
+                        <p>Parallel processing enables training on massive datasets</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Smart</h3>
+                        <p>Attention mechanism understands relationships between words</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔧</div>
+                        <h3>Flexible</h3>
+                        <p>Can be adapted for various tasks with minimal changes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: The Problem They Solved -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">The Problem They Solved</h2>
+                <div class="two-column animate-item">
+                    <div>
+                        <h3 style="color: var(--pink-accent); margin-bottom: 20px;">Before Transformers</h3>
+                        <div class="list-item">
+                            <p class="big-text">❌ Sequential processing (slow)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">❌ Hard to capture long-range dependencies</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">❌ Difficult to parallelize training</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">❌ Limited context understanding</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--emerald); margin-bottom: 20px;">With Transformers</h3>
+                        <div class="list-item">
+                            <p class="big-text">✅ Parallel processing (fast)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Direct relationships between any words</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Scales beautifully with GPU clusters</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Rich contextual understanding</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Core Concept - Attention -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">The Core Idea: Attention</h2>
+                <div class="content-box animate-item">
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        <span class="highlight">Attention</span> is the mechanism that allows the model to 
+                        focus on different parts of the input when processing each word.
+                    </p>
+                    <div style="background: var(--muted-blue); padding: 25px; border-radius: 10px; margin: 20px 0;">
+                        <p class="big-text" style="font-style: italic; color: var(--electric-cyan);">
+                            "The animal didn't cross the street because it was too tired"
+                        </p>
+                    </div>
+                    <p class="big-text">
+                        When processing "it", attention helps identify that "it" refers to "the animal" 
+                        by <span class="highlight">weighing the relevance</span> of each word in the sentence.
+                    </p>
+                </div>
+                <div class="feature-card animate-item" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 15px;">Think of it like...</h3>
+                    <p class="big-text">
+                        When reading a sentence, your brain automatically focuses on the most relevant words 
+                        to understand the current word. Transformers do the same thing, but 
+                        <span class="highlight">explicitly</span> and <span class="highlight">computationally</span>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Self-Attention Explained -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Self-Attention: The Building Block</h2>
+                <div class="content-box animate-item">
+                    <h3 style="margin-bottom: 20px; color: var(--emerald);">How it works (conceptually):</h3>
+                    <div class="list-item" style="margin: 15px 0;">
+                        <p class="big-text">1️⃣ For each word, create three vectors: <span class="highlight">Query</span>, <span class="highlight">Key</span>, <span class="highlight">Value</span></p>
+                    </div>
+                    <div class="list-item" style="margin: 15px 0;">
+                        <p class="big-text">2️⃣ Compare each word's Query with all other words' Keys to find relevance</p>
+                    </div>
+                    <div class="list-item" style="margin: 15px 0;">
+                        <p class="big-text">3️⃣ Weight the Values based on these relevance scores</p>
+                    </div>
+                    <div class="list-item" style="margin: 15px 0;">
+                        <p class="big-text">4️⃣ Sum up the weighted Values to get the new representation</p>
+                    </div>
+                </div>
+                <div class="feature-card animate-item" style="margin-top: 30px;">
+                    <p class="big-text">
+                        <span class="highlight">Query (Q):</span> "What am I looking for?"<br>
+                        <span class="highlight">Key (K):</span> "What information do I have?"<br>
+                        <span class="highlight">Value (V):</span> "What information do I provide?"
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Multi-Head Attention -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Multi-Head Attention</h2>
+                <div class="content-box animate-item">
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        Instead of having one attention mechanism, transformers use 
+                        <span class="highlight">multiple attention "heads"</span> in parallel.
+                    </p>
+                    <p class="big-text">
+                        Each head can focus on different types of relationships:
+                    </p>
+                </div>
+                <div class="three-column animate-item" style="margin-top: 30px;">
+                    <div class="feature-card">
+                        <h3>Head 1</h3>
+                        <p class="big-text">Focuses on grammatical relationships</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Head 2</h3>
+                        <p class="big-text">Tracks semantic meaning</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Head 3+</h3>
+                        <p class="big-text">Captures various other patterns</p>
+                    </div>
+                </div>
+                <div class="content-box animate-item" style="margin-top: 30px;">
+                    <p class="big-text">
+                        The outputs from all heads are <span class="highlight">combined</span> to create 
+                        a richer representation that captures multiple aspects of the relationships.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Architecture Overview -->
+        <div class="slide">
+            <div style="max-width: 1400px; width: 100%;">
+                <h2 class="animate-item">Transformer Architecture</h2>
+                <div class="architecture-diagram animate-item">
+                    <div class="component-box">
+                        <h3>Input</h3>
+                        <p>Tokenized text</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="component-box">
+                        <h3>Embedding</h3>
+                        <p>Convert words to vectors</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="component-box">
+                        <h3>Positional Encoding</h3>
+                        <p>Add position information</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="component-box">
+                        <h3>Encoder Layers</h3>
+                        <p>Self-Attention + FFN</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="component-box">
+                        <h3>Decoder Layers</h3>
+                        <p>Masked Attention + Cross-Attention</p>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="component-box">
+                        <h3>Output</h3>
+                        <p>Predicted next token</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Building Blocks - Embedding -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Building Block 1: Embeddings</h2>
+                <div class="content-box animate-item">
+                    <h3 style="margin-bottom: 20px; color: var(--emerald);">Word Embedding</h3>
+                    <p class="big-text" style="margin-bottom: 20px;">
+                        Convert words into dense vector representations where 
+                        <span class="highlight">similar words are close together</span> in vector space.
+                    </p>
+                    <div class="code-snippet">
+                        "cat" → [0.2, -0.1, 0.8, ...]<br>
+                        "dog" → [0.3, -0.2, 0.7, ...]  (close to "cat")<br>
+                        "airplane" → [-0.5, 0.9, -0.3, ...]  (far from "cat")
+                    </div>
+                </div>
+                <div class="content-box animate-item">
+                    <h3 style="margin-bottom: 20px; color: var(--emerald);">Positional Encoding</h3>
+                    <p class="big-text">
+                        Since transformers process all words in parallel, we need to 
+                        <span class="highlight">explicitly tell the model about word positions</span>.
+                        This is done by adding position-specific vectors to the embeddings.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Building Blocks - Encoder -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Building Block 2: Encoder Layer</h2>
+                <div class="content-box animate-item">
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        Each encoder layer has two main components:
+                    </p>
+                    <div class="two-column">
+                        <div>
+                            <h3 style="color: var(--electric-cyan); margin-bottom: 15px;">1. Self-Attention</h3>
+                            <p class="big-text">
+                                Allows each word to attend to all words in the input, 
+                                including itself. This captures relationships and dependencies.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 style="color: var(--pink-accent); margin-bottom: 15px;">2. Feed-Forward Network</h3>
+                            <p class="big-text">
+                                A small neural network applied independently to each position. 
+                                Processes and transforms the attended information.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="feature-card animate-item" style="margin-top: 30px;">
+                    <p class="big-text">
+                        Both components have <span class="highlight">residual connections</span> and 
+                        <span class="highlight">layer normalization</span> to help with training stability.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Building Blocks - Decoder -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Building Block 3: Decoder Layer</h2>
+                <div class="content-box animate-item">
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        Decoder layers are used for generation tasks (like translation or text completion):
+                    </p>
+                    <div class="list-item">
+                        <p class="big-text">
+                            <span class="highlight">Masked Self-Attention:</span> Can only attend to previous positions 
+                            (prevents "cheating" by looking at future tokens)
+                        </p>
+                    </div>
+                    <div class="list-item">
+                        <p class="big-text">
+                            <span class="highlight">Cross-Attention:</span> Attends to the encoder's output 
+                            (allows decoder to use input information)
+                        </p>
+                    </div>
+                    <div class="list-item">
+                        <p class="big-text">
+                            <span class="highlight">Feed-Forward Network:</span> Same as in encoder
+                        </p>
+                    </div>
+                </div>
+                <div class="feature-card animate-item" style="margin-top: 30px;">
+                    <p class="big-text">
+                        <span class="highlight">Note:</span> Some models like GPT only use decoder layers, 
+                        while BERT only uses encoder layers. The full architecture uses both!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Training Process -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">How Transformers Learn</h2>
+                <div class="content-box animate-item">
+                    <h3 style="margin-bottom: 20px; color: var(--emerald);">Pre-training Phase</h3>
+                    <div class="list-item">
+                        <p class="big-text">
+                            <span class="highlight">Self-supervised learning:</span> Train on massive unlabeled text 
+                            (predicting next word or masked words)
+                        </p>
+                    </div>
+                    <div class="list-item">
+                        <p class="big-text">
+                            Model learns general language patterns, grammar, facts, and reasoning
+                        </p>
+                    </div>
+                    <div class="list-item">
+                        <p class="big-text">
+                            This phase requires <span class="highlight">huge compute</span> and <span class="highlight">large datasets</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="content-box animate-item" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 20px; color: var(--emerald);">Fine-tuning Phase</h3>
+                    <div class="list-item">
+                        <p class="big-text">
+                            Take the pre-trained model and <span class="highlight">fine-tune</span> on your specific task 
+                            with labeled data
+                        </p>
+                    </div>
+                    <div class="list-item">
+                        <p class="big-text">
+                            Much faster and requires less data than training from scratch
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Common Architectures -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Common Transformer Variants</h2>
+                <div class="comparison-table animate-item">
+                    <div class="table-row table-header">
+                        <div>Model</div>
+                        <div>Architecture</div>
+                        <div>Best For</div>
+                    </div>
+                    <div class="table-row">
+                        <div><strong>BERT</strong></div>
+                        <div>Encoder only</div>
+                        <div>Understanding tasks (classification, Q&A)</div>
+                    </div>
+                    <div class="table-row">
+                        <div><strong>GPT</strong></div>
+                        <div>Decoder only</div>
+                        <div>Generation tasks (text completion, storytelling)</div>
+                    </div>
+                    <div class="table-row">
+                        <div><strong>T5</strong></div>
+                        <div>Encoder-Decoder</div>
+                        <div>Text-to-text tasks (translation, summarization)</div>
+                    </div>
+                    <div class="table-row">
+                        <div><strong>BART</strong></div>
+                        <div>Encoder-Decoder</div>
+                        <div>Generation with understanding (summarization)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Implementation Tips -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Practical Implementation Tips</h2>
+                <div class="two-column animate-item">
+                    <div>
+                        <h3 style="color: var(--emerald); margin-bottom: 20px;">Starting Out</h3>
+                        <div class="list-item">
+                            <p class="big-text">✅ Use pre-trained models (Hugging Face Transformers)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Start with fine-tuning, not training from scratch</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Understand tokenization (how text becomes numbers)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Learn to use attention masks and padding</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--electric-cyan); margin-bottom: 20px;">Building Understanding</h3>
+                        <div class="list-item">
+                            <p class="big-text">✅ Implement a simple attention mechanism from scratch</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Build a mini-transformer (1-2 layers) on small data</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Visualize attention weights to see what model focuses on</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Experiment with different architectures</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Key Hyperparameters -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Key Hyperparameters to Understand</h2>
+                <div class="three-column animate-item">
+                    <div class="feature-card">
+                        <h3>Hidden Size</h3>
+                        <p class="big-text">Dimension of the vector representations. Larger = more capacity but slower.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Number of Heads</h3>
+                        <p class="big-text">How many parallel attention mechanisms. Usually 8-16.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Number of Layers</h3>
+                        <p class="big-text">How many encoder/decoder blocks to stack. More layers = deeper understanding.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Feed-Forward Size</h3>
+                        <p class="big-text">Width of the FFN layer. Often 4x the hidden size.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Max Sequence Length</h3>
+                        <p class="big-text">Longest input sequence. Longer = more context but quadratic cost.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Learning Rate</h3>
+                        <p class="big-text">How fast the model learns. Very sensitive - use learning rate schedules!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Common Challenges -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Common Challenges & Solutions</h2>
+                <div class="two-column animate-item">
+                    <div>
+                        <h3 style="color: var(--pink-accent); margin-bottom: 20px;">Challenge</h3>
+                        <div class="list-item">
+                            <p class="big-text">💥 Out of memory errors</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">⏱️ Training takes forever</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">📉 Model not learning</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">🎯 Poor performance on task</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--emerald); margin-bottom: 20px;">Solution</h3>
+                        <div class="list-item">
+                            <p class="big-text">✅ Reduce batch size, use gradient accumulation, or mixed precision</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Use smaller models, shorter sequences, or pre-trained weights</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Check learning rate, initialization, and gradient flow</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">✅ Fine-tune on domain-specific data, adjust hyperparameters</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Applications -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Where Transformers are Used</h2>
+                <div class="three-column animate-item">
+                    <div class="feature-card">
+                        <h3>🤖 NLP Tasks</h3>
+                        <p class="big-text">Translation, summarization, question answering, chatbots, sentiment analysis</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🖼️ Computer Vision</h3>
+                        <p class="big-text">Image classification, object detection, image generation (ViT, DETR)</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🧬 Biology</h3>
+                        <p class="big-text">Protein folding, drug discovery, genomic analysis</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🎵 Audio</h3>
+                        <p class="big-text">Speech recognition, music generation, audio classification</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>💬 Multimodal</h3>
+                        <p class="big-text">Image captioning, visual question answering, CLIP, DALL-E</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔬 Scientific</h3>
+                        <p class="big-text">Code generation, scientific paper analysis, data science automation</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Next Steps -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Your Learning Path</h2>
+                <div class="content-box animate-item">
+                    <h3 style="margin-bottom: 25px; color: var(--emerald);">Phase 1: Understanding</h3>
+                    <p class="big-text">
+                        Read papers (Attention is All You Need, BERT, GPT), watch visualizations, 
+                        understand the intuition behind each component.
+                    </p>
+                </div>
+                <div class="content-box animate-item" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 25px; color: var(--electric-cyan);">Phase 2: Using</h3>
+                    <p class="big-text">
+                        Use Hugging Face Transformers library to fine-tune models on your tasks. 
+                        Experiment with different architectures and hyperparameters.
+                    </p>
+                </div>
+                <div class="content-box animate-item" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 25px; color: var(--pink-accent);">Phase 3: Building</h3>
+                    <p class="big-text">
+                        Implement components from scratch: attention mechanism, transformer blocks, 
+                        then a full mini-transformer. This deepens your understanding significantly.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Resources -->
+        <div class="slide">
+            <div style="max-width: 1100px; width: 100%;">
+                <h2 class="animate-item">Recommended Resources</h2>
+                <div class="two-column animate-item">
+                    <div>
+                        <h3 style="color: var(--emerald); margin-bottom: 20px;">Reading</h3>
+                        <div class="list-item">
+                            <p class="big-text">📄 "Attention is All You Need" (original paper)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">📄 "The Illustrated Transformer" by Jay Alammar</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">📄 "BERT Explained" papers and blog posts</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">📚 "Deep Learning" by Goodfellow et al.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--electric-cyan); margin-bottom: 20px;">Hands-On</h3>
+                        <div class="list-item">
+                            <p class="big-text">🔧 Hugging Face Transformers library & tutorials</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">🔧 "The Annotated Transformer" (implementation guide)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">🔧 Andrej Karpathy's nanoGPT (building GPT from scratch)</p>
+                        </div>
+                        <div class="list-item">
+                            <p class="big-text">🔧 PyTorch/TensorFlow official transformer tutorials</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Final Thoughts -->
+        <div class="slide">
+            <div class="title-slide">
+                <h1 class="animate-item">Key Takeaways</h1>
+                <div class="content-box animate-item" style="max-width: 900px; margin-top: 40px;">
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        ✅ Transformers revolutionized NLP through <span class="highlight">parallel processing</span> 
+                        and <span class="highlight">attention mechanisms</span>
+                    </p>
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        ✅ The core idea is <span class="highlight">self-attention</span>: allowing words to 
+                        directly relate to each other
+                    </p>
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        ✅ Building from ground up means understanding: <span class="highlight">embeddings</span>, 
+                        <span class="highlight">attention</span>, <span class="highlight">encoder/decoder blocks</span>
+                    </p>
+                    <p class="big-text" style="margin-bottom: 25px;">
+                        ✅ Start with pre-trained models, then gradually build your understanding 
+                        by implementing components yourself
+                    </p>
+                    <p class="big-text">
+                        ✅ The math is less important than understanding the <span class="highlight">intuition</span> 
+                        and <span class="highlight">purpose</span> of each component
+                    </p>
+                </div>
+                <p class="animate-item" style="color: var(--muted-text); margin-top: 50px; font-size: 1.2rem;">
+                    Happy Building! 🚀
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+        <span class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">19</span></span>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+
+    <div class="help-text">
+        Use arrow keys or spacebar to navigate
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides.forEach(slide => {
+                slide.classList.remove('active', 'prev');
+            });
+
+            if (n >= totalSlides) currentSlide = 0;
+            if (n < 0) currentSlide = totalSlides - 1;
+
+            for (let i = 0; i < currentSlide; i++) {
+                slides[i].classList.add('prev');
+            }
+
+            slides[currentSlide].classList.add('active');
+
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            showSlide(currentSlide);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            }
+            if (e.key === 'Home') {
+                currentSlide = 0;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'End') {
+                currentSlide = totalSlides - 1;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) changeSlide(1);
+            if (touchEndX > touchStartX + 50) changeSlide(-1);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        showSlide(0);
+
+        window.addEventListener('load', () => {
+            slides[0].querySelectorAll('.animate-item').forEach((item, index) => {
+                item.style.opacity = '0';
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
